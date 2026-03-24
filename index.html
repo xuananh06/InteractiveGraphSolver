@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Graph Solver</title>
+    <!-- Modern Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Tool Panel -->
+        <aside class="sidebar glass">
+            <h1 class="logo">
+                <i data-lucide="network"></i> Graph Solver
+            </h1>
+
+            <div class="tool-section">
+                <h3>Background</h3>
+                <label for="image-upload" class="custom-file-upload btn hover-glow">
+                    <i data-lucide="image"></i> Upload Image
+                </label>
+                <input id="image-upload" type="file" accept="image/png, image/jpeg" />
+                <button id="btn-clear-bg" class="btn btn-secondary mt-1">Clear Image</button>
+            </div>
+
+            <div class="tool-section">
+                <h3>Drawing Tools</h3>
+                <div class="tool-modes">
+                    <button class="tool-btn active-tool" data-mode="select" title="Select / Move">
+                        <i data-lucide="mouse-pointer-2"></i> Select
+                    </button>
+                    <button class="tool-btn" data-mode="add-vertex" title="Add Vertex">
+                        <i data-lucide="circle"></i> Vertex
+                    </button>
+                    <button class="tool-btn" data-mode="add-edge" title="Add Edge">
+                        <i data-lucide="git-commit"></i> Edge
+                    </button>
+                    <button class="tool-btn" data-mode="delete" title="Delete Element">
+                        <i data-lucide="eraser"></i> Delete
+                    </button>
+                </div>
+                <button id="btn-clear-graph" class="btn btn-danger mt-1">Clear Graph</button>
+            </div>
+
+            <div class="tool-section">
+                <h3>Solve & Algorithms</h3>
+                <select id="algorithm-select" class="dropdown">
+                    <option value="" disabled selected>Select Algorithm...</option>
+                    <option value="euler">Euler Path / Circuit</option>
+                    <option value="hamilton">Hamilton Path / Circuit</option>
+                    <option value="shortest-path">Shortest Path (Dijkstra)</option>
+                    <option value="dfs">Depth First Search (DFS)</option>
+                    <option value="bfs">Breadth First Search (BFS)</option>
+                    <option value="mst">Minimum Spanning Tree</option>
+                </select>
+                <button id="btn-run" class="btn btn-primary mt-1 hover-glow w-full">
+                    <i data-lucide="play"></i> Run Algorithm
+                </button>
+            </div>
+            
+            <div class="instructions text-sm">
+                <p><strong>Tips:</strong></p>
+                <ul id="tool-hints">
+                    <li>Use <strong>Select</strong> to move vertices.</li>
+                    <li><strong>Edge:</strong> Click two vertices sequentially.</li>
+                    <li>Double click vertex/edge with Select mode to edit info.</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Workspace: Canvas -->
+        <main class="workspace">
+            <div class="canvas-container">
+                <canvas id="graph-canvas"></canvas>
+            </div>
+        </main>
+
+        <!-- Right Panel: Results & Math Data -->
+        <aside class="results-panel glass">
+            <h2>Analysis & Results</h2>
+            <div id="results-content" class="results-content scrollable">
+                <div class="placeholder-text">
+                    <i data-lucide="bar-chart-2"></i>
+                    <p>Run an algorithm or select elements to view analysis here.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Modals -->
+        <div id="weight-modal" class="modal-overlay hidden">
+            <div class="modal glass">
+                <h3>Set Edge Weight</h3>
+                <input type="number" id="edge-weight-input" value="1" step="any" class="dropdown" />
+                <label style="display: flex; align-items: center; gap: 8px; margin: 10px 0;">
+                    <input type="checkbox" id="edge-directed-input" /> Directed Edge
+                </label>
+                <div class="modal-actions">
+                    <button id="btn-weight-cancel" class="btn btn-secondary">Cancel</button>
+                    <button id="btn-weight-save" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts (Loaded sequentially for file:// protocol execution) -->
+    <script src="js/Graph.js"></script>
+    <script src="js/Algorithms.js"></script>
+    <script src="js/CanvasManager.js"></script>
+    <script src="js/UIManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
