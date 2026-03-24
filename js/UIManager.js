@@ -250,13 +250,15 @@ class UIManager {
                 break;
             }
             case 'euler': {
-                const res = Algorithms.eulerCheck(this.graph);
+                const res = Algorithms.eulerHierholzer(this.graph);
                 if (res.type === 'error') {
                     this.showResult("Euler", res.msg, "error");
                 } else if (res.type === 'circuit') {
-                    this.showResult("Euler Circuit", res.msg);
+                    this.canvasManager.setPathHighlight(res.path);
+                    this.showResult("Euler Circuit", `${res.msg}<br/>Tour: ${res.path.join(' &rarr; ')}`);
                 } else if (res.type === 'path') {
-                    this.showResult("Euler Path", res.msg);
+                    this.canvasManager.setPathHighlight(res.path);
+                    this.showResult("Euler Path", `${res.msg}<br/>Path: ${res.path.join(' &rarr; ')}`);
                 } else {
                     this.showResult("Euler Result", res.msg, "error");
                 }

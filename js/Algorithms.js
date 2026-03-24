@@ -177,6 +177,117 @@ class Algorithms {
         }
     }
 
+    // Euler Path / Circuit Construction (Hierholzer) - Undirected graphs only
+    // Returns: { type: 'circuit'|'path'|'none'|'error', msg, path?: number[] }
+    static eulerHierholzer(graph) {
+        if (graph.vertices.size === 0) {
+            return { type: 'error', msg: 'Graph is empty.' };
+        }
+
+        const hasDirectedEdge = graph.edges.some(e => e.directed);
+        if (hasDirectedEdge) {
+            return { type: 'error', msg: 'Euler path/circuit construction currently supports undirected graphs only.' };
+        }
+
+        // Degree + pick start
+        const degree = new Map();
+        for (const [id] of graph.vertices) degree.set(id, 0);
+        for (const e of graph.edges) {
+            if (e.u === e.v) {
+                degree.set(e.u, degree.get(e.u) + 2);
+            } else {
+                degree.set(e.u, degree.get(e.u) + 1);
+                degree.set(e.v, degree.get(e.v) + 1);
+            }
+        }
+
+        // If no edges, no Euler traversal to show
+        const edgeCount = graph.edges.length;
+        if (edgeCount === 0) {
+            return { type: 'none', msg: 'Graph has no edges.' };
+        }
+
+        // Connectivity check (ignore isolated vertices)
+        if (!this.isConnectedUndirected(graph)) {
+            return { type: 'none', msg: 'Graph is disconnected.' };
+        }
+
+        const oddVertices = [];
+        for (const [id, deg] of degree.entries()) {
+            if (deg % 2 !== 0) oddVertices.push(id);
+        }
+
+        if (!(oddVertices.length === 0 || oddVertices.length === 2)) {
+            return { type: 'none', msg: `No Euler Path or Circuit (found ${oddVertices.length} odd degree vertices).` };
+        }
+
+        let start = null;
+        if (oddVertices.length === 2) {
+            start = oddVertices[0];
+        } else {
+            // circuit: any vertex with degree > 0
+            for (const [id, deg] of degree.entries()) {
+                if (deg > 0) {
+                    start = id;
+                    break;
+                }
+            }
+        }
+        if (start === null) {
+            return { type: 'none', msg: 'No Euler Path or Circuit (no non-isolated vertices).' };
+        }
+
+        // Build local adjacency (multiset) for edge deletions
+        const adj = new Map();
+        for (const [id] of graph.vertices) adj.set(id, []);
+        for (const e of graph.edges) {
+            if (e.u === e.v) {
+                // self-loop contributes 2 to degree, represent as two half-edges
+                adj.get(e.u).push(e.v);
+                adj.get(e.u).push(e.v);
+            } else {
+                adj.get(e.u).push(e.v);
+                adj.get(e.v).push(e.u);
+            }
+        }
+
+        const removeNeighbor = (list, value) => {
+            const idx = list.lastIndexOf(value);
+            if (idx !== -1) list.splice(idx, 1);
+        };
+
+        // Hierholzer
+        const stack = [start];
+        const circuit = [];
+
+        while (stack.length > 0) {
+            const v = stack[stack.length - 1];
+            const neighbors = adj.get(v);
+            if (neighbors && neighbors.length > 0) {
+                const u = neighbors.pop();
+                if (u === v) {
+                    // self-loop: remove the matching half-edge too
+                    removeNeighbor(neighbors, v);
+                } else {
+                    removeNeighbor(adj.get(u), v);
+                }
+                stack.push(u);
+            } else {
+                circuit.push(stack.pop());
+            }
+        }
+
+        const path = circuit.reverse();
+        if (path.length !== edgeCount + 1) {
+            return { type: 'none', msg: 'No Euler Path/Circuit covering all edges (graph may be disconnected by edges).' };
+        }
+
+        if (oddVertices.length === 0) {
+            return { type: 'circuit', msg: 'Euler Circuit found (Hierholzer).', path };
+        }
+        return { type: 'path', msg: 'Euler Path found (Hierholzer).', path };
+    }
+
     static isConnectedUndirected(graph) {
         // Find a vertex with degree > 0
         let start = null;
