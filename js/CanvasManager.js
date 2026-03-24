@@ -17,6 +17,9 @@ class CanvasManager {
         this.hoveredEdge = null; // {u, v}
         this.activePath = null; // Array of node IDs representing a highlighted path
         this.activeEdges = null; // Array of edge objects to highlight
+        this.vertexOrder = null; // Map<vertexId, orderNumber>
+        this.edgeOrder = null; // Map<edgeKey, orderNumber>
+        this._animToken = 0;
 
         this.resize();
         window.addEventListener('resize', () => this.resize());
@@ -46,6 +49,17 @@ class CanvasManager {
     clearHighlights() {
         this.activePath = null;
         this.activeEdges = null;
+        this.vertexOrder = null;
+        this.edgeOrder = null;
+        this._animToken++;
+        this.draw();
+    }
+
+    resetHighlights() {
+        this.activePath = null;
+        this.activeEdges = null;
+        this.vertexOrder = null;
+        this.edgeOrder = null;
         this.draw();
     }
 
@@ -57,6 +71,87 @@ class CanvasManager {
     setEdgesHighlight(edges) {
         this.activeEdges = edges;
         this.draw();
+    }
+
+    setVertexOrderFromTraversal(traversal) {
+        const order = new Map();
+        for (let i = 0; i < traversal.length; i++) {
+            const id = traversal[i];
+            if (!order.has(id)) order.set(id, i + 1);
+        }
+        this.vertexOrder = order;
+        this.draw();
+    }
+
+    setEdgeOrderFromPath(path) {
+        const order = new Map();
+        for (let i = 0; i < path.length - 1; i++) {
+            const u = path[i];
+            const v = path[i + 1];
+            order.set(this._edgeKey(u, v, false), i + 1);
+        }
+        this.edgeOrder = order;
+        this.draw();
+    }
+
+    setEdgeOrderFromEdges(edges) {
+        const order = new Map();
+        for (let i = 0; i < edges.length; i++) {
+            const e = edges[i];
+            order.set(this._edgeKey(e.u, e.v, !!e.directed), i + 1);
+        }
+        this.edgeOrder = order;
+        this.draw();
+    }
+
+    animatePath(path, stepMs = 350, { numberVertices = false, numberEdges = false, onStep = null } = {}) {
+        this._animToken++;
+        const token = this._animToken;
+        // Reset visuals without cancelling this animation token
+        this.resetHighlights();
+
+        const runStep = (i) => {
+            if (token !== this._animToken) return;
+            const slice = path.slice(0, Math.max(1, i + 1));
+            this.activePath = slice;
+            if (numberVertices) {
+                const order = new Map();
+                for (let k = 0; k < slice.length; k++) {
+                    const id = slice[k];
+                    if (!order.has(id)) order.set(id, k + 1);
+                }
+                this.vertexOrder = order;
+            }
+            if (numberEdges) {
+                const eOrder = new Map();
+                for (let k = 0; k < slice.length - 1; k++) {
+                    const u = slice[k];
+                    const v = slice[k + 1];
+                    eOrder.set(this._edgeKey(u, v, false), k + 1);
+                }
+                this.edgeOrder = eOrder;
+            }
+            if (typeof onStep === 'function') {
+                const info = {
+                    step: i + 1,
+                    total: path.length,
+                    node: path[i],
+                    prev: i > 0 ? path[i - 1] : null
+                };
+                onStep(info);
+            }
+            this.draw();
+            if (i < path.length - 1) setTimeout(() => runStep(i + 1), stepMs);
+        };
+
+        runStep(0);
+    }
+
+    _edgeKey(u, v, directed) {
+        if (directed) return `${u}->${v}`;
+        const a = Math.min(u, v);
+        const b = Math.max(u, v);
+        return `${a}-${b}`;
     }
 
     // Convert screen coordinates to world/graph coordinates
@@ -182,6 +277,29 @@ class CanvasManager {
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(edge.weight, midX, midY);
         }
+
+        // Draw edge order badge (for traversals / MST / Euler / Hamilton)
+        if (this.edgeOrder) {
+            const key = this._edgeKey(edge.u, edge.v, !!edge.directed);
+            const ord = this.edgeOrder.get(key);
+            if (ord !== undefined) {
+                const bx = midX + 14;
+                const by = midY - 14;
+                this.ctx.fillStyle = 'rgba(22, 27, 34, 0.92)';
+                this.ctx.beginPath();
+                this.ctx.roundRect(bx - 10, by - 9, 20, 18, 4);
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#10b981';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+
+                this.ctx.fillStyle = '#e6edf3';
+                this.ctx.font = '11px Inter';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(String(ord), bx, by);
+            }
+        }
     }
 
     drawNode(node) {
@@ -214,5 +332,25 @@ class CanvasManager {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(node.id, node.x, node.y);
+
+        // Draw vertex order badge (for DFS/BFS traversal etc.)
+        if (this.vertexOrder && this.vertexOrder.has(node.id)) {
+            const ord = this.vertexOrder.get(node.id);
+            const bx = node.x + this.nodeRadius - 2;
+            const by = node.y - this.nodeRadius + 2;
+            this.ctx.fillStyle = 'rgba(22, 27, 34, 0.92)';
+            this.ctx.beginPath();
+            this.ctx.roundRect(bx - 9, by - 9, 18, 18, 6);
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#f59e0b';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = '#e6edf3';
+            this.ctx.font = '10px Inter';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(String(ord), bx, by);
+        }
     }
 }

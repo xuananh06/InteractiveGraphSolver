@@ -55,6 +55,11 @@ class UIManager {
             this.runAlgorithm();
         });
 
+        // Clear results panel
+        document.getElementById('btn-clear-results').addEventListener('click', () => {
+            this.clearResults();
+        });
+
         // Canvas Events
         const canvas = this.canvasManager.canvas;
         canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
@@ -182,6 +187,18 @@ class UIManager {
         container.prepend(div);
     }
 
+    createStepLogger(title) {
+        const container = document.getElementById('results-content');
+        if (container.querySelector('.placeholder-text')) container.innerHTML = '';
+
+        const logId = `step-log-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+        const div = document.createElement('div');
+        div.className = 'result-item';
+        div.innerHTML = `<strong>${title}:</strong><br/><div id="${logId}" style="margin-top:8px;line-height:1.4;"></div>`;
+        container.prepend(div);
+        return document.getElementById(logId);
+    }
+
     clearResults() {
         document.getElementById('results-content').innerHTML = `
             <div class="placeholder-text">
@@ -205,19 +222,45 @@ class UIManager {
         }
 
         this.canvasManager.clearHighlights();
+        const animateToggle = document.getElementById('animate-toggle');
+        const doAnimate = !!(animateToggle && animateToggle.checked);
 
         switch (algo) {
             case 'dfs': {
                 const start = Array.from(this.graph.vertices.keys())[0];
                 const traversal = Algorithms.dfs(this.graph, start);
-                this.canvasManager.setPathHighlight(traversal);
+                if (doAnimate) {
+                    const logEl = this.createStepLogger("DFS Steps");
+                    this.canvasManager.animatePath(traversal, 300, {
+                        numberVertices: true,
+                        numberEdges: false,
+                        onStep: ({ step, total, node }) => {
+                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${node}</div>`);
+                        }
+                    });
+                } else {
+                    this.canvasManager.setPathHighlight(traversal);
+                    this.canvasManager.setVertexOrderFromTraversal(traversal);
+                }
                 this.showResult("DFS Traversal", `Started at ${start}.<br/>Path: ${traversal.join(' &rarr; ')}`);
                 break;
             }
             case 'bfs': {
                 const start = Array.from(this.graph.vertices.keys())[0];
                 const traversal = Algorithms.bfs(this.graph, start);
-                this.canvasManager.setPathHighlight(traversal);
+                if (doAnimate) {
+                    const logEl = this.createStepLogger("BFS Steps");
+                    this.canvasManager.animatePath(traversal, 300, {
+                        numberVertices: true,
+                        numberEdges: false,
+                        onStep: ({ step, total, node }) => {
+                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${node}</div>`);
+                        }
+                    });
+                } else {
+                    this.canvasManager.setPathHighlight(traversal);
+                    this.canvasManager.setVertexOrderFromTraversal(traversal);
+                }
                 this.showResult("BFS Traversal", `Started at ${start}.<br/>Path: ${traversal.join(' &rarr; ')}`);
                 break;
             }
@@ -235,7 +278,23 @@ class UIManager {
                 if (distance === Infinity || path.length === 0) {
                     this.showResult("Dijkstra", `No path between ${start} and ${end}.`, "error");
                 } else {
-                    this.canvasManager.setPathHighlight(path);
+                    if (doAnimate) {
+                        const logEl = this.createStepLogger("Dijkstra Steps");
+                        this.canvasManager.animatePath(path, 350, {
+                            numberVertices: false,
+                            numberEdges: true,
+                            onStep: ({ step, total, node, prev }) => {
+                                if (prev === null) {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                } else {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                }
+                            }
+                        });
+                    } else {
+                        this.canvasManager.setPathHighlight(path);
+                        this.canvasManager.setEdgeOrderFromPath(path);
+                    }
                     this.showResult("Dijkstra", `Shortest path from ${start} to ${end}.<br/>Cost: ${distance}<br/>Path: ${path.join(' &rarr; ')}`);
                 }
                 break;
@@ -246,6 +305,7 @@ class UIManager {
                     this.showResult("MST (Prim's)", "Graph is disconnected! Shown edges form a forest.", "error");
                 }
                 this.canvasManager.setEdgesHighlight(result.edges);
+                this.canvasManager.setEdgeOrderFromEdges(result.edges);
                 this.showResult("Minimum Spanning Tree", `Total Weight: ${result.totalWeight}<br/>Edges: ${result.edges.length}`);
                 break;
             }
@@ -254,10 +314,42 @@ class UIManager {
                 if (res.type === 'error') {
                     this.showResult("Euler", res.msg, "error");
                 } else if (res.type === 'circuit') {
-                    this.canvasManager.setPathHighlight(res.path);
+                    if (doAnimate) {
+                        const logEl = this.createStepLogger("Euler Steps");
+                        this.canvasManager.animatePath(res.path, 300, {
+                            numberVertices: false,
+                            numberEdges: true,
+                            onStep: ({ step, total, node, prev }) => {
+                                if (prev === null) {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                } else {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prev} &rarr; ${node}</div>`);
+                                }
+                            }
+                        });
+                    } else {
+                        this.canvasManager.setPathHighlight(res.path);
+                        this.canvasManager.setEdgeOrderFromPath(res.path);
+                    }
                     this.showResult("Euler Circuit", `${res.msg}<br/>Tour: ${res.path.join(' &rarr; ')}`);
                 } else if (res.type === 'path') {
-                    this.canvasManager.setPathHighlight(res.path);
+                    if (doAnimate) {
+                        const logEl = this.createStepLogger("Euler Steps");
+                        this.canvasManager.animatePath(res.path, 300, {
+                            numberVertices: false,
+                            numberEdges: true,
+                            onStep: ({ step, total, node, prev }) => {
+                                if (prev === null) {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                } else {
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prev} &rarr; ${node}</div>`);
+                                }
+                            }
+                        });
+                    } else {
+                        this.canvasManager.setPathHighlight(res.path);
+                        this.canvasManager.setEdgeOrderFromPath(res.path);
+                    }
                     this.showResult("Euler Path", `${res.msg}<br/>Path: ${res.path.join(' &rarr; ')}`);
                 } else {
                     this.showResult("Euler Result", res.msg, "error");
@@ -270,10 +362,42 @@ class UIManager {
                 setTimeout(() => {
                     const res = Algorithms.hamiltonian(this.graph);
                     if (res.circuit) {
-                        this.canvasManager.setPathHighlight(res.circuit);
+                        if (doAnimate) {
+                            const logEl = this.createStepLogger("Hamilton Steps");
+                            this.canvasManager.animatePath(res.circuit, 300, {
+                                numberVertices: false,
+                                numberEdges: true,
+                                onStep: ({ step, total, node, prev }) => {
+                                    if (prev === null) {
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                    } else {
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                    }
+                                }
+                            });
+                        } else {
+                            this.canvasManager.setPathHighlight(res.circuit);
+                            this.canvasManager.setEdgeOrderFromPath(res.circuit);
+                        }
                         this.showResult("Hamiltonian Circuit", `Found Circuit:<br/>${res.circuit.join(' &rarr; ')}`);
                     } else if (res.path) {
-                        this.canvasManager.setPathHighlight(res.path);
+                        if (doAnimate) {
+                            const logEl = this.createStepLogger("Hamilton Steps");
+                            this.canvasManager.animatePath(res.path, 300, {
+                                numberVertices: false,
+                                numberEdges: true,
+                                onStep: ({ step, total, node, prev }) => {
+                                    if (prev === null) {
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                    } else {
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                    }
+                                }
+                            });
+                        } else {
+                            this.canvasManager.setPathHighlight(res.path);
+                            this.canvasManager.setEdgeOrderFromPath(res.path);
+                        }
                         this.showResult("Hamiltonian Path", `Found Path based on backtracking:<br/>${res.path.join(' &rarr; ')}`);
                     } else {
                         this.showResult("Hamiltonian Result", "No Hamiltonian Path or Circuit exists.", "error");

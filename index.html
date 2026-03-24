@@ -57,8 +57,15 @@
                     <option value="bfs">Breadth First Search (BFS)</option>
                     <option value="mst">Minimum Spanning Tree</option>
                 </select>
+                <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                    <input type="checkbox" id="animate-toggle" />
+                    <span style="font-size: 12px; opacity: 0.9;">Animate (step-by-step)</span>
+                </label>
                 <button id="btn-run" class="btn btn-primary mt-1 hover-glow w-full">
                     <i data-lucide="play"></i> Run Algorithm
+                </button>
+                <button id="btn-clear-results" class="btn btn-secondary mt-1 w-full">
+                    <i data-lucide="trash-2"></i> Clear Results
                 </button>
             </div>
             
