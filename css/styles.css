@@ -61,6 +61,7 @@ body {
     flex-direction: column;
     gap: 1.5rem;
     z-index: 10;
+    overflow-y: auto;
 }
 
 .results-panel {
@@ -246,6 +247,10 @@ canvas.select-mode:active {
     overflow-y: auto;
 }
 
+.scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: var(--panel-border) transparent;
+}
 .scrollable::-webkit-scrollbar {
     width: 6px;
 }
