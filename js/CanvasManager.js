@@ -338,7 +338,7 @@ class CanvasManager {
         this.ctx.font = 'bold 12px Inter';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(node.id, node.x, node.y);
+        this.ctx.fillText(node.label || node.id, node.x, node.y);
 
         // Draw vertex order badge (for DFS/BFS traversal etc.)
         if (this.vertexOrder && this.vertexOrder.has(node.id)) {

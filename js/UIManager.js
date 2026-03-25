@@ -72,16 +72,25 @@ class UIManager {
         canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
         canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
         canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+        canvas.addEventListener('dblclick', this.onDoubleClick.bind(this));
         canvas.addEventListener('contextmenu', e => e.preventDefault());
 
-        // Modal
+        // Modal: Weight
         document.getElementById('btn-weight-cancel').addEventListener('click', () => {
             document.getElementById('weight-modal').classList.add('hidden');
         });
         
-        // Use arrow function or bind this for save
         document.getElementById('btn-weight-save').addEventListener('click', () => {
             this.finishAddingEdge();
+        });
+
+        // Modal: Vertex Rename
+        document.getElementById('btn-vertex-cancel').addEventListener('click', () => {
+            document.getElementById('vertex-modal').classList.add('hidden');
+        });
+
+        document.getElementById('btn-vertex-save').addEventListener('click', () => {
+            this.finishRenamingVertex();
         });
     }
 
@@ -162,6 +171,15 @@ class UIManager {
         this.dragNodeId = null;
     }
 
+    onDoubleClick(e) {
+        const rect = this.canvasManager.canvas.getBoundingClientRect();
+        const clickedNodeId = this.canvasManager.getNodeAt(e.clientX - rect.left, e.clientY - rect.top);
+
+        if (clickedNodeId && this.mode === 'select') {
+            this.promptVertexRename(clickedNodeId);
+        }
+    }
+
     promptEdgeWeight(u, v) {
         this.pendingEdge = { u, v };
         document.getElementById('edge-weight-input').value = 1;
@@ -184,6 +202,32 @@ class UIManager {
         this.canvasManager.draw();
     }
 
+    promptVertexRename(id) {
+        const vertex = this.graph.getVertex(id);
+        if (!vertex) return;
+
+        this.pendingVertexRenameId = id;
+        const input = document.getElementById('vertex-label-input');
+        input.value = vertex.label;
+        document.getElementById('vertex-modal').classList.remove('hidden');
+        input.focus();
+        input.select();
+    }
+
+    finishRenamingVertex() {
+        if (this.pendingVertexRenameId === null) return;
+        
+        const newLabel = document.getElementById('vertex-label-input').value.trim();
+        if (newLabel) {
+            this.graph.renameVertex(this.pendingVertexRenameId, newLabel);
+            this.updateVertexSelects();
+            this.canvasManager.draw();
+        }
+
+        document.getElementById('vertex-modal').classList.add('hidden');
+        this.pendingVertexRenameId = null;
+    }
+
     updateVertexSelects() {
         if (!this.startVertexSelect || !this.endVertexSelect) return;
 
@@ -192,9 +236,10 @@ class UIManager {
         const updateSelect = (select, currentValue) => {
             select.innerHTML = '<option value="" disabled selected>-</option>';
             vertices.forEach(v => {
+                const vertex = this.graph.getVertex(v);
                 const opt = document.createElement('option');
                 opt.value = v;
-                opt.textContent = v;
+                opt.textContent = vertex ? vertex.label : v;
                 if (v.toString() === currentValue.toString()) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -277,14 +322,17 @@ class UIManager {
                         numberVertices: true,
                         numberEdges: false,
                         onStep: ({ step, total, node }) => {
-                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${node}</div>`);
+                            const label = this.graph.getVertex(node).label;
+                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${label}</div>`);
                         }
                     });
                 } else {
                     this.canvasManager.setPathHighlight(traversal);
                     this.canvasManager.setVertexOrderFromTraversal(traversal);
                 }
-                this.showResult("DFS Traversal", `Started at ${start}.<br/>Path: ${traversal.join(' &rarr; ')}`);
+                const pathStr = traversal.map(id => this.graph.getVertex(id).label).join(' &rarr; ');
+                const startLabel = this.graph.getVertex(start).label;
+                this.showResult("DFS Traversal", `Started at ${startLabel}.<br/>Path: ${pathStr}`);
                 break;
             }
             case 'bfs': {
@@ -300,14 +348,17 @@ class UIManager {
                         numberVertices: true,
                         numberEdges: false,
                         onStep: ({ step, total, node }) => {
-                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${node}</div>`);
+                            const label = this.graph.getVertex(node).label;
+                            logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Visit ${label}</div>`);
                         }
                     });
                 } else {
                     this.canvasManager.setPathHighlight(traversal);
                     this.canvasManager.setVertexOrderFromTraversal(traversal);
                 }
-                this.showResult("BFS Traversal", `Started at ${start}.<br/>Path: ${traversal.join(' &rarr; ')}`);
+                const pathStr = traversal.map(id => this.graph.getVertex(id).label).join(' &rarr; ');
+                const startLabel = this.graph.getVertex(start).label;
+                this.showResult("BFS Traversal", `Started at ${startLabel}.<br/>Path: ${pathStr}`);
                 break;
             }
             case 'shortest-path': {
@@ -334,9 +385,12 @@ class UIManager {
                             numberEdges: true,
                             onStep: ({ step, total, node, prev }) => {
                                 if (prev === null) {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${nodeLabel}</div>`);
                                 } else {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    const prevLabel = this.graph.getVertex(prev).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prevLabel} &rarr; ${nodeLabel}</div>`);
                                 }
                             }
                         });
@@ -344,7 +398,10 @@ class UIManager {
                         this.canvasManager.setPathHighlight(path);
                         this.canvasManager.setEdgeOrderFromPath(path);
                     }
-                    this.showResult("Dijkstra", `Shortest path from ${start} to ${end}.<br/>Cost: ${distance}<br/>Path: ${path.join(' &rarr; ')}`);
+                    const startLabel = this.graph.getVertex(start).label;
+                    const endLabel = this.graph.getVertex(end).label;
+                    const pathStr = path.map(id => this.graph.getVertex(id).label).join(' &rarr; ');
+                    this.showResult("Dijkstra", `Shortest path from ${startLabel} to ${endLabel}.<br/>Cost: ${distance}<br/>Path: ${pathStr}`);
                 }
                 break;
             }
@@ -380,9 +437,12 @@ class UIManager {
                             numberEdges: true,
                             onStep: ({ step, total, node, prev }) => {
                                 if (prev === null) {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${nodeLabel}</div>`);
                                 } else {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prev} &rarr; ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    const prevLabel = this.graph.getVertex(prev).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prevLabel} &rarr; ${nodeLabel}</div>`);
                                 }
                             }
                         });
@@ -390,7 +450,8 @@ class UIManager {
                         this.canvasManager.setPathHighlight(res.path);
                         this.canvasManager.setEdgeOrderFromPath(res.path);
                     }
-                    this.showResult("Euler Circuit", `${res.msg}<br/>Tour: ${res.path.join(' &rarr; ')}`);
+                    const pathStr = res.path.map(id => this.graph.getVertex(id).label).join(' &rarr; ');
+                    this.showResult("Euler Circuit", `${res.msg}<br/>Tour: ${pathStr}`);
                 } else if (res.type === 'path') {
                     if (doAnimate) {
                         const logEl = this.createStepLogger("Euler Steps");
@@ -399,9 +460,12 @@ class UIManager {
                             numberEdges: true,
                             onStep: ({ step, total, node, prev }) => {
                                 if (prev === null) {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${nodeLabel}</div>`);
                                 } else {
-                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prev} &rarr; ${node}</div>`);
+                                    const nodeLabel = this.graph.getVertex(node).label;
+                                    const prevLabel = this.graph.getVertex(prev).label;
+                                    logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Traverse ${prevLabel} &rarr; ${nodeLabel}</div>`);
                                 }
                             }
                         });
@@ -409,7 +473,8 @@ class UIManager {
                         this.canvasManager.setPathHighlight(res.path);
                         this.canvasManager.setEdgeOrderFromPath(res.path);
                     }
-                    this.showResult("Euler Path", `${res.msg}<br/>Path: ${res.path.join(' &rarr; ')}`);
+                    const pathStr = res.path.map(id => this.graph.getVertex(id).label).join(' &rarr; ');
+                    this.showResult("Euler Path", `${res.msg}<br/>Path: ${pathStr}`);
                 } else {
                     this.showResult("Euler Result", res.msg, "error");
                 }

@@ -5,6 +5,7 @@ class Vertex {
         this.id = id;
         this.x = x;
         this.y = y;
+        this.label = String(id);
     }
 }
 
@@ -38,6 +39,15 @@ class Graph {
         this.edges = this.edges.filter(e => e.u !== id && e.v !== id);
         this.vertices.delete(id);
         return true;
+    }
+
+    renameVertex(id, newLabel) {
+        const vertex = this.vertices.get(id);
+        if (vertex) {
+            vertex.label = newLabel;
+            return true;
+        }
+        return false;
     }
 
     addEdge(uId, vId, weight = 1, directed = false) {
