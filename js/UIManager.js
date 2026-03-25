@@ -227,7 +227,12 @@ class UIManager {
 
         switch (algo) {
             case 'dfs': {
-                const start = Array.from(this.graph.vertices.keys())[0];
+                const start = this.canvasManager.selectedNodeId;
+                const feas = this.graph.checkFeasibility('dfs', start, null);
+                if (!feas.feasible) {
+                    this.showResult("DFS Traversal", feas.error, "error");
+                    break;
+                }
                 const traversal = Algorithms.dfs(this.graph, start);
                 if (doAnimate) {
                     const logEl = this.createStepLogger("DFS Steps");
@@ -246,7 +251,12 @@ class UIManager {
                 break;
             }
             case 'bfs': {
-                const start = Array.from(this.graph.vertices.keys())[0];
+                const start = this.canvasManager.selectedNodeId;
+                const feas = this.graph.checkFeasibility('bfs', start, null);
+                if (!feas.feasible) {
+                    this.showResult("BFS Traversal", feas.error, "error");
+                    break;
+                }
                 const traversal = Algorithms.bfs(this.graph, start);
                 if (doAnimate) {
                     const logEl = this.createStepLogger("BFS Steps");
@@ -265,14 +275,21 @@ class UIManager {
                 break;
             }
             case 'shortest-path': {
-                // For simplicity, take first and last added. Better UI would be selecting start/end nodes
+                // Source = selected node; Destination = hovered node
+                const start = this.canvasManager.selectedNodeId;
+                const end = this.canvasManager.hoveredNodeId;
+
+                const feas = this.graph.checkFeasibility('dijkstra', start, end);
+                if (!feas.feasible) {
+                    this.showResult("Dijkstra", feas.error, "error");
+                    break;
+                }
+
                 const vertices = Array.from(this.graph.vertices.keys());
                 if (vertices.length < 2) {
-                    this.showResult("Shortest Path", "Need at least 2 nodes.", "error");
-                    return;
+                    this.showResult("Dijkstra", "Need at least 2 nodes.", "error");
+                    break;
                 }
-                const start = this.canvasManager.selectedNodeId || vertices[0];
-                const end = vertices[vertices.length - 1]; // or prompt user! Let's pick largest ID
                 
                 const { path, distance } = Algorithms.dijkstra(this.graph, start, end);
                 if (distance === Infinity || path.length === 0) {
@@ -300,6 +317,11 @@ class UIManager {
                 break;
             }
             case 'mst': {
+                const feas = this.graph.checkFeasibility('mst', null, null);
+                if (!feas.feasible) {
+                    this.showResult("MST (Prim's)", feas.error, "error");
+                    break;
+                }
                 const result = Algorithms.mstPrim(this.graph);
                 if (!result.isConnected) {
                     this.showResult("MST (Prim's)", "Graph is disconnected! Shown edges form a forest.", "error");
@@ -310,6 +332,11 @@ class UIManager {
                 break;
             }
             case 'euler': {
+                const feas = this.graph.checkFeasibility('euler', null, null);
+                if (!feas.feasible) {
+                    this.showResult("Euler", feas.error, "error");
+                    break;
+                }
                 const res = Algorithms.eulerHierholzer(this.graph);
                 if (res.type === 'error') {
                     this.showResult("Euler", res.msg, "error");

@@ -346,15 +346,7 @@ class Graph {
                 // Check degree conditions for directed vs undirected graphs
                 const isDirectedGraph = this.edges.some(e => e.directed);
                 if (isDirectedGraph) {
-                    let unbalancedCount = 0;
-                    for (const [id] of this.vertices) {
-                        if (this.getDegree(id) > 0 && this.getInDegree(id) !== this.getOutDegree(id)) {
-                            unbalancedCount++;
-                        }
-                    }
-                    if (unbalancedCount > 0) {
-                        return { feasible: false, error: `Euler circuit (directed) requires in-degree = out-degree for every vertex. ${unbalancedCount} vertices do not satisfy this condition.` };
-                    }
+                    return { feasible: false, error: "Euler path/circuit construction currently supports only undirected graphs." };
                 } else {
                     let oddDegreeCount = 0;
                     for (const [id] of this.vertices) {
@@ -362,8 +354,11 @@ class Graph {
                             oddDegreeCount++;
                         }
                     }
-                    if (oddDegreeCount > 0) {
-                         return { feasible: false, error: `Euler circuit (undirected) requires all vertices to have even degree. Currently, ${oddDegreeCount} vertices have odd degree.` };
+                    // Undirected Euler:
+                    // - Euler Circuit: all vertices even degree => 0 odd vertices
+                    // - Euler Path: exactly 2 vertices odd degree
+                    if (!(oddDegreeCount === 0 || oddDegreeCount === 2)) {
+                        return { feasible: false, error: `Euler (undirected) requires either 0 or 2 odd-degree vertices. Currently, ${oddDegreeCount} vertices have odd degree.` };
                     }
                 }
 
