@@ -185,8 +185,12 @@ class Algorithms {
         }
 
         const hasDirectedEdge = graph.edges.some(e => e.directed);
+        const hasUndirectedEdge = graph.edges.some(e => !e.directed);
+        if (hasDirectedEdge && hasUndirectedEdge) {
+            return { type: 'error', msg: 'Euler path/circuit construction currently supports either fully undirected graphs or fully directed graphs (not a mix).' };
+        }
         if (hasDirectedEdge) {
-            return { type: 'error', msg: 'Euler path/circuit construction currently supports undirected graphs only.' };
+            return this.eulerHierholzerDirected(graph);
         }
 
         // Degree + pick start
@@ -286,6 +290,157 @@ class Algorithms {
             return { type: 'circuit', msg: 'Euler Circuit found (Hierholzer).', path };
         }
         return { type: 'path', msg: 'Euler Path found (Hierholzer).', path };
+    }
+
+    // Euler Path / Circuit Construction (Hierholzer) - Directed graphs only
+    static eulerHierholzerDirected(graph) {
+        if (graph.edges.length === 0) {
+            return { type: 'none', msg: 'Graph has no edges.' };
+        }
+
+        // Ensure graph is fully directed
+        if (graph.edges.some(e => !e.directed)) {
+            return { type: 'error', msg: 'Directed Euler requires a fully directed graph.' };
+        }
+
+        const activeIds = [];
+        for (const [id] of graph.vertices) {
+            if (graph.getDegree(id) > 0) activeIds.push(id);
+        }
+        if (activeIds.length === 0) {
+            return { type: 'none', msg: 'Graph has no non-isolated vertices/edges.' };
+        }
+
+        // Compute in/out degrees
+        const inDeg = new Map();
+        const outDeg = new Map();
+        for (const [id] of graph.vertices) {
+            inDeg.set(id, 0);
+            outDeg.set(id, 0);
+        }
+        for (const e of graph.edges) {
+            outDeg.set(e.u, outDeg.get(e.u) + 1);
+            inDeg.set(e.v, inDeg.get(e.v) + 1);
+        }
+
+        const startCandidates = [];
+        const endCandidates = [];
+        for (const id of activeIds) {
+            const diff = outDeg.get(id) - inDeg.get(id);
+            if (diff === 1) startCandidates.push(id);
+            else if (diff === -1) endCandidates.push(id);
+            else if (diff === 0) {
+                // ok
+            } else {
+                return { type: 'none', msg: `No Euler path/circuit: vertex ${id} has out-in = ${diff}.` };
+            }
+        }
+
+        let type = null;
+        let start = null;
+        const isCircuit = startCandidates.length === 0 && endCandidates.length === 0;
+        const isPath = startCandidates.length === 1 && endCandidates.length === 1;
+        if (isCircuit) {
+            type = 'circuit';
+            start = activeIds[0];
+        } else if (isPath) {
+            type = 'path';
+            start = startCandidates[0];
+        } else {
+            return {
+                type: 'none',
+                msg: `No Euler path/circuit: starts(diff=+1)=${startCandidates.length}, ends(diff=-1)=${endCandidates.length}.`
+            };
+        }
+
+        // Connectivity check (strong reachability) by forward & reverse BFS
+        const adj = new Map();
+        const revAdj = new Map();
+        for (const id of activeIds) {
+            adj.set(id, []);
+            revAdj.set(id, []);
+        }
+        for (const e of graph.edges) {
+            if (!adj.has(e.u) || !revAdj.has(e.v)) continue;
+            adj.get(e.u).push(e.v);
+            revAdj.get(e.v).push(e.u);
+        }
+
+        let startForConn = start;
+        let endForConn = null;
+        if (type === 'path') {
+            endForConn = endCandidates[0];
+            // Augment with extra edge end -> start
+            if (adj.has(endForConn)) adj.get(endForConn).push(startForConn);
+            if (revAdj.has(startForConn)) revAdj.get(startForConn).push(endForConn);
+        }
+
+        const bfs = (gAdj) => {
+            const visited = new Set();
+            const q = [startForConn];
+            visited.add(startForConn);
+            while (q.length > 0) {
+                const v = q.shift();
+                for (const n of gAdj.get(v)) {
+                    if (!visited.has(n)) {
+                        visited.add(n);
+                        q.push(n);
+                    }
+                }
+            }
+            return visited;
+        };
+
+        const visitedFwd = bfs(adj);
+        if (visitedFwd.size !== activeIds.length) {
+            return { type: 'none', msg: 'No Euler path/circuit: forward reachability condition failed.' };
+        }
+        const visitedRev = bfs(revAdj);
+        if (visitedRev.size !== activeIds.length) {
+            return { type: 'none', msg: 'No Euler path/circuit: reverse reachability condition failed.' };
+        }
+
+        // Hierholzer using edge-index multiset
+        const m = graph.edges.length;
+        const used = new Array(m).fill(false);
+        const adjEdges = new Map();
+        for (const id of graph.vertices.keys()) adjEdges.set(id, []);
+        for (let i = 0; i < m; i++) {
+            const e = graph.edges[i];
+            adjEdges.get(e.u).push(i);
+        }
+
+        const ptr = new Map();
+        for (const id of graph.vertices.keys()) ptr.set(id, 0);
+
+        const stack = [start];
+        const circuit = [];
+
+        while (stack.length > 0) {
+            const v = stack[stack.length - 1];
+            const list = adjEdges.get(v) || [];
+            let i = ptr.get(v) || 0;
+
+            while (i < list.length && used[list[i]]) i++;
+            ptr.set(v, i);
+
+            if (i === list.length) {
+                circuit.push(stack.pop());
+            } else {
+                const edgeIndex = list[i];
+                used[edgeIndex] = true;
+                ptr.set(v, i + 1);
+                const nextV = graph.edges[edgeIndex].v;
+                stack.push(nextV);
+            }
+        }
+
+        const path = circuit.reverse();
+        if (path.length !== m + 1) {
+            return { type: 'none', msg: 'No Euler path/circuit covering all edges.' };
+        }
+
+        return { type, msg: type === 'circuit' ? 'Euler Circuit found (Hierholzer).' : 'Euler Path found (Hierholzer).', path };
     }
 
     static isConnectedUndirected(graph) {

@@ -23,6 +23,9 @@
 - **Euler Path / Circuit**:
   - Kiểm tra điều kiện bậc + liên thông
   - Dựng đường đi/chu trình bằng **Hierholzer** (đồ thị **vô hướng**)
+- **Euler (có hướng)**:
+  - Hỗ trợ nếu đồ thị **chỉ gồm cạnh có hướng** (không mix vô hướng và có hướng)
+  - Điều kiện theo **in-degree/out-degree** và kiểm tra tính liên thông theo chiều
 - **Hamilton Path / Circuit**:
   - Tìm kiếm thực tế bằng **backtracking** (NP-Complete)
 

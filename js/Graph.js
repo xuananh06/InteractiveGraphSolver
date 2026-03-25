@@ -343,22 +343,134 @@ class Graph {
                     return { feasible: false, error: "Graph is not connected (ignoring isolated vertices). All edges must belong to a single connected component." };
                 }
 
-                // Check degree conditions for directed vs undirected graphs
-                const isDirectedGraph = this.edges.some(e => e.directed);
-                if (isDirectedGraph) {
-                    return { feasible: false, error: "Euler path/circuit construction currently supports only undirected graphs." };
+                const lowerName = algorithmName.toLowerCase();
+                const wantsCircuitOnly =
+                    lowerName.includes('circuit') || lowerName === 'euler_circuit';
+
+                const hasDirected = this.edges.some(e => e.directed);
+                const hasUndirected = this.edges.some(e => !e.directed);
+
+                // Support either: fully undirected OR fully directed (not a mix)
+                if (hasDirected && hasUndirected) {
+                    return { feasible: false, error: "Euler path/circuit construction currently supports either fully undirected graphs or fully directed graphs (not a mix)." };
+                }
+
+                if (hasDirected) {
+                    // Directed Euler:
+                    // - Circuit: for every vertex with non-zero degree, inDegree = outDegree
+                    // - Path: exactly one vertex has out-in = 1 (start), exactly one has in-out = 1 (end)
+                    const startCandidates = [];
+                    const endCandidates = [];
+
+                    for (const [id] of this.vertices) {
+                        if (this.getDegree(id) <= 0) continue;
+
+                        const inD = this.getInDegree(id);
+                        const outD = this.getOutDegree(id);
+                        const diff = outD - inD;
+
+                        if (diff === 1) startCandidates.push(id);
+                        else if (diff === -1) endCandidates.push(id);
+                        else if (diff === 0) {
+                            // ok
+                        } else {
+                            return { feasible: false, error: `Directed Euler requires each vertex to have out-degree - in-degree in {0,1,-1}. Vertex ${id} has diff = ${diff}.` };
+                        }
+                    }
+
+                    if (wantsCircuitOnly) {
+                        if (startCandidates.length !== 0 || endCandidates.length !== 0) {
+                            return { feasible: false, error: "Directed Euler circuit requires in-degree = out-degree for every vertex (no vertices with diff = ±1)." };
+                        }
+                    } else {
+                        const isCircuit = startCandidates.length === 0 && endCandidates.length === 0;
+                        const isPath = startCandidates.length === 1 && endCandidates.length === 1;
+                        if (!isCircuit && !isPath) {
+                            return { feasible: false, error: `Directed Euler requires either a circuit (all diff = 0) or a path (exactly 1 start diff=+1 and 1 end diff=-1). Found: starts=${startCandidates.length}, ends=${endCandidates.length}.` };
+                        }
+                    }
+
+                    // Strong connectivity check on active vertices.
+                    // For path case, check strong connectivity after adding an extra edge (end -> start).
+                    const activeIds = [];
+                    for (const [id] of this.vertices) {
+                        if (this.getDegree(id) > 0) activeIds.push(id);
+                    }
+
+                    let connStart = null;
+                    let connEnd = null;
+                    if (startCandidates.length === 1 && endCandidates.length === 1) {
+                        connStart = startCandidates[0];
+                        connEnd = endCandidates[0];
+                    } else {
+                        connStart = activeIds[0];
+                    }
+
+                    const adj = new Map();
+                    const revAdj = new Map();
+                    for (const id of activeIds) {
+                        adj.set(id, []);
+                        revAdj.set(id, []);
+                    }
+                    for (const edge of this.edges) {
+                        if (!edge.directed) continue;
+                        // edges are directed only here
+                        if (!adj.has(edge.u)) continue;
+                        if (!revAdj.has(edge.v)) continue;
+                        adj.get(edge.u).push(edge.v);
+                        revAdj.get(edge.v).push(edge.u);
+                    }
+
+                    if (connEnd !== null && connStart !== null) {
+                        // Augment: add edge (end -> start)
+                        if (adj.has(connEnd)) adj.get(connEnd).push(connStart);
+                        if (revAdj.has(connStart)) revAdj.get(connStart).push(connEnd);
+                    }
+
+                    const bfsDir = (graphAdj) => {
+                        const visited = new Set();
+                        const q = [connStart];
+                        visited.add(connStart);
+                        while (q.length > 0) {
+                            const node = q.shift();
+                            for (const nxt of graphAdj.get(node)) {
+                                if (!visited.has(nxt)) {
+                                    visited.add(nxt);
+                                    q.push(nxt);
+                                }
+                            }
+                        }
+                        return visited;
+                    };
+
+                    const visitedFwd = bfsDir(adj);
+                    if (visitedFwd.size !== activeIds.length) {
+                        return { feasible: false, error: "Directed Euler requires the active vertices to be strongly connected (reachability condition failed)." };
+                    }
+
+                    const visitedRev = bfsDir(revAdj);
+                    if (visitedRev.size !== activeIds.length) {
+                        return { feasible: false, error: "Directed Euler requires the active vertices to be strongly connected (reverse reachability condition failed)." };
+                    }
                 } else {
+                    // Undirected Euler:
+                    // - Circuit: all vertices even degree => 0 odd vertices
+                    // - Path: exactly 2 vertices odd degree
                     let oddDegreeCount = 0;
                     for (const [id] of this.vertices) {
                         if (this.getDegree(id) % 2 !== 0) {
                             oddDegreeCount++;
                         }
                     }
-                    // Undirected Euler:
-                    // - Euler Circuit: all vertices even degree => 0 odd vertices
-                    // - Euler Path: exactly 2 vertices odd degree
-                    if (!(oddDegreeCount === 0 || oddDegreeCount === 2)) {
-                        return { feasible: false, error: `Euler (undirected) requires either 0 or 2 odd-degree vertices. Currently, ${oddDegreeCount} vertices have odd degree.` };
+
+                    if (wantsCircuitOnly) {
+                        if (oddDegreeCount !== 0) {
+                            return { feasible: false, error: `Euler circuit (undirected) requires all vertices to have even degree. Currently, ${oddDegreeCount} vertices have odd degree.` };
+                        }
+                    } else {
+                        if (!(oddDegreeCount === 0 || oddDegreeCount === 2)) {
+                            return { feasible: false, error: `Euler (undirected) requires either 0 or 2 odd-degree vertices. Currently, ${oddDegreeCount} vertices have odd degree.` };
+                        }
                     }
                 }
 

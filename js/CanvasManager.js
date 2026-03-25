@@ -88,7 +88,8 @@ class CanvasManager {
         for (let i = 0; i < path.length - 1; i++) {
             const u = path[i];
             const v = path[i + 1];
-            order.set(this._edgeKey(u, v, false), i + 1);
+            const directed = this._isDirectedEdge(u, v);
+            order.set(this._edgeKey(u, v, directed), i + 1);
         }
         this.edgeOrder = order;
         this.draw();
@@ -127,7 +128,8 @@ class CanvasManager {
                 for (let k = 0; k < slice.length - 1; k++) {
                     const u = slice[k];
                     const v = slice[k + 1];
-                    eOrder.set(this._edgeKey(u, v, false), k + 1);
+                    const directed = this._isDirectedEdge(u, v);
+                    eOrder.set(this._edgeKey(u, v, directed), k + 1);
                 }
                 this.edgeOrder = eOrder;
             }
@@ -152,6 +154,11 @@ class CanvasManager {
         const a = Math.min(u, v);
         const b = Math.max(u, v);
         return `${a}-${b}`;
+    }
+
+    _isDirectedEdge(u, v) {
+        // Determine direction for badge keying.
+        return this.graph.edges.some(e => e.directed && e.u === u && e.v === v);
     }
 
     // Convert screen coordinates to world/graph coordinates
