@@ -96,11 +96,13 @@ class Algorithms {
     }
 
     // Minimum Spanning Tree (Prim's) - Undirected
-    static mstPrim(graph) {
+    static mstPrim(graph, startId = null) {
         if (graph.vertices.size === 0) return { edges: [], totalWeight: 0 };
         
-        // Find a start node
-        const startId = Array.from(graph.vertices.keys())[0];
+        // Find a start node if not provided
+        if (startId === null || !graph.vertices.has(startId)) {
+            startId = Array.from(graph.vertices.keys())[0];
+        }
         const inMST = new Set([startId]);
         const edges = [];
         let totalWeight = 0;
@@ -179,7 +181,7 @@ class Algorithms {
 
     // Euler Path / Circuit Construction (Hierholzer) - Undirected graphs only
     // Returns: { type: 'circuit'|'path'|'none'|'error', msg, path?: number[] }
-    static eulerHierholzer(graph) {
+    static eulerHierholzer(graph, startId = null) {
         if (graph.vertices.size === 0) {
             return { type: 'error', msg: 'Graph is empty.' };
         }
@@ -190,7 +192,7 @@ class Algorithms {
             return { type: 'error', msg: 'Euler path/circuit construction currently supports either fully undirected graphs or fully directed graphs (not a mix).' };
         }
         if (hasDirectedEdge) {
-            return this.eulerHierholzerDirected(graph);
+            return this.eulerHierholzerDirected(graph, startId);
         }
 
         // Degree + pick start
@@ -227,13 +229,21 @@ class Algorithms {
 
         let start = null;
         if (oddVertices.length === 2) {
-            start = oddVertices[0];
+            if (startId !== null && oddVertices.includes(startId)) {
+                start = startId;
+            } else {
+                start = oddVertices[0];
+            }
         } else {
             // circuit: any vertex with degree > 0
-            for (const [id, deg] of degree.entries()) {
-                if (deg > 0) {
-                    start = id;
-                    break;
+            if (startId !== null && graph.getDegree(startId) > 0) {
+                start = startId;
+            } else {
+                for (const [id, deg] of degree.entries()) {
+                    if (deg > 0) {
+                        start = id;
+                        break;
+                    }
                 }
             }
         }
@@ -293,7 +303,7 @@ class Algorithms {
     }
 
     // Euler Path / Circuit Construction (Hierholzer) - Directed graphs only
-    static eulerHierholzerDirected(graph) {
+    static eulerHierholzerDirected(graph, startId = null) {
         if (graph.edges.length === 0) {
             return { type: 'none', msg: 'Graph has no edges.' };
         }
@@ -480,13 +490,15 @@ class Algorithms {
     }
 
     // Hamilton Path - Backtracking
-    static hamiltonian(graph) {
+    static hamiltonian(graph, startId = null) {
         if (graph.vertices.size === 0) return { path: null, circuit: null };
         const n = graph.vertices.size;
         let pathFound = null;
         let circuitFound = null;
 
-        const verticesArray = Array.from(graph.vertices.keys());
+        const verticesArray = (startId !== null && graph.vertices.has(startId)) 
+            ? [startId] 
+            : Array.from(graph.vertices.keys());
         
         const backtrack = (path, visited) => {
             if (circuitFound) return; // Stop if already found exactly what we want

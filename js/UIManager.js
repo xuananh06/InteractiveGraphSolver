@@ -10,8 +10,14 @@ class UIManager {
         this.isDragging = false;
         this.dragNodeId = null;
         this.edgeStartNodeId = null;
+        this.pendingEdge = null;
+
+        // New Dropdowns
+        this.startVertexSelect = document.getElementById('start-vertex');
+        this.endVertexSelect = document.getElementById('end-vertex');
 
         this.setupEventListeners();
+        this.updateVertexSelects();
     }
 
     setupEventListeners() {
@@ -48,6 +54,7 @@ class UIManager {
              this.canvasManager.clearHighlights();
              this.canvasManager.draw();
              this.clearResults();
+             this.updateVertexSelects();
         });
 
         // Algorithm Execution
@@ -97,6 +104,7 @@ class UIManager {
             if (!clickedNodeId) {
                 this.graph.addVertex(coords.x, coords.y);
                 this.canvasManager.draw();
+                this.updateVertexSelects();
             }
         } else if (this.mode === 'select') {
             if (clickedNodeId) {
@@ -111,6 +119,7 @@ class UIManager {
             if (clickedNodeId) {
                 this.graph.removeVertex(clickedNodeId);
                 this.canvasManager.draw();
+                this.updateVertexSelects();
             }
         } else if (this.mode === 'add-edge') {
             if (clickedNodeId) {
@@ -175,6 +184,29 @@ class UIManager {
         this.canvasManager.draw();
     }
 
+    updateVertexSelects() {
+        if (!this.startVertexSelect || !this.endVertexSelect) return;
+
+        const vertices = Array.from(this.graph.vertices.keys()).sort((a, b) => a - b);
+        
+        const updateSelect = (select, currentValue) => {
+            select.innerHTML = '<option value="" disabled selected>-</option>';
+            vertices.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = v;
+                if (v.toString() === currentValue.toString()) opt.selected = true;
+                select.appendChild(opt);
+            });
+        };
+
+        const currentStart = this.startVertexSelect.value;
+        const currentEnd = this.endVertexSelect.value;
+
+        updateSelect(this.startVertexSelect, currentStart);
+        updateSelect(this.endVertexSelect, currentEnd);
+    }
+
     showResult(title, content, type = 'info') {
         const container = document.getElementById('results-content');
         if (container.querySelector('.placeholder-text')) {
@@ -225,9 +257,14 @@ class UIManager {
         const animateToggle = document.getElementById('animate-toggle');
         const doAnimate = !!(animateToggle && animateToggle.checked);
 
+        // Get selected vertices as numbers
+        const startVal = this.startVertexSelect.value;
+        const endVal = this.endVertexSelect.value;
+        const start = startVal ? parseInt(startVal) : this.canvasManager.selectedNodeId;
+        const end = endVal ? parseInt(endVal) : this.canvasManager.hoveredNodeId;
+
         switch (algo) {
             case 'dfs': {
-                const start = this.canvasManager.selectedNodeId;
                 const feas = this.graph.checkFeasibility('dfs', start, null);
                 if (!feas.feasible) {
                     this.showResult("DFS Traversal", feas.error, "error");
@@ -251,7 +288,6 @@ class UIManager {
                 break;
             }
             case 'bfs': {
-                const start = this.canvasManager.selectedNodeId;
                 const feas = this.graph.checkFeasibility('bfs', start, null);
                 if (!feas.feasible) {
                     this.showResult("BFS Traversal", feas.error, "error");
@@ -275,10 +311,6 @@ class UIManager {
                 break;
             }
             case 'shortest-path': {
-                // Source = selected node; Destination = hovered node
-                const start = this.canvasManager.selectedNodeId;
-                const end = this.canvasManager.hoveredNodeId;
-
                 const feas = this.graph.checkFeasibility('dijkstra', start, end);
                 if (!feas.feasible) {
                     this.showResult("Dijkstra", feas.error, "error");
@@ -317,12 +349,12 @@ class UIManager {
                 break;
             }
             case 'mst': {
-                const feas = this.graph.checkFeasibility('mst', null, null);
+                const feas = this.graph.checkFeasibility('mst', start, null);
                 if (!feas.feasible) {
                     this.showResult("MST (Prim's)", feas.error, "error");
                     break;
                 }
-                const result = Algorithms.mstPrim(this.graph);
+                const result = Algorithms.mstPrim(this.graph, start);
                 if (!result.isConnected) {
                     this.showResult("MST (Prim's)", "Graph is disconnected! Shown edges form a forest.", "error");
                 }
@@ -332,12 +364,12 @@ class UIManager {
                 break;
             }
             case 'euler': {
-                const feas = this.graph.checkFeasibility('euler', null, null);
+                const feas = this.graph.checkFeasibility('euler', start, null);
                 if (!feas.feasible) {
                     this.showResult("Euler", feas.error, "error");
                     break;
                 }
-                const res = Algorithms.eulerHierholzer(this.graph);
+                const res = Algorithms.eulerHierholzer(this.graph, start);
                 if (res.type === 'error') {
                     this.showResult("Euler", res.msg, "error");
                 } else if (res.type === 'circuit') {
@@ -387,7 +419,7 @@ class UIManager {
                 this.showResult("Hamiltonian", "Warning: NP-Complete algorithm. Computing...", "info");
                 // Yield thread to show message
                 setTimeout(() => {
-                    const res = Algorithms.hamiltonian(this.graph);
+                    const res = Algorithms.hamiltonian(this.graph, start);
                     if (res.circuit) {
                         if (doAnimate) {
                             const logEl = this.createStepLogger("Hamilton Steps");
