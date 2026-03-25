@@ -45,6 +45,11 @@ class Algorithms {
 
     // Shortest Path (Dijkstra)
     static dijkstra(graph, startId, endId) {
+        const hasNegativeWeight = graph.edges.some(e => e.weight < 0);
+        if (hasNegativeWeight) {
+             throw new Error("Dijkstra's algorithm requires all edge weights to be non-negative.");
+        }
+
         const distances = new Map();
         const previous = new Map();
         const nodes = new Set();
@@ -54,6 +59,7 @@ class Algorithms {
             nodes.add(id);
         }
         distances.set(startId, 0);
+
 
         while (nodes.size > 0) {
             // Unoptimized Priority Q
@@ -496,10 +502,10 @@ class Algorithms {
         let pathFound = null;
         let circuitFound = null;
 
-        const verticesArray = (startId !== null && graph.vertices.has(startId)) 
-            ? [startId] 
+        const verticesArray = (startId !== null && graph.vertices.has(startId))
+            ? [startId]
             : Array.from(graph.vertices.keys());
-        
+
         const backtrack = (path, visited) => {
             if (circuitFound) return; // Stop if already found exactly what we want
 
@@ -522,9 +528,9 @@ class Algorithms {
                 if (!visited.has(next)) {
                     visited.add(next);
                     path.push(next);
-                    
+
                     backtrack(path, visited);
-                    
+
                     path.pop();
                     visited.delete(next);
                 }
@@ -536,9 +542,14 @@ class Algorithms {
             if (circuitFound) break;
         }
 
+        // Return path object with labels
+        const getLabels = (arr) => arr ? arr.map(id => graph.getVertex(id).label) : null;
+
         return {
             path: pathFound,
-            circuit: circuitFound
+            circuit: circuitFound,
+            pathLabels: getLabels(pathFound),
+            circuitLabels: getLabels(circuitFound)
         };
     }
 }

@@ -118,6 +118,31 @@ class Graph {
         return adj;
     }
 
+    toJSON() {
+        return JSON.stringify({
+            vertices: Array.from(this.vertices.entries()),
+            edges: this.edges,
+            nextId: this.nextId
+        });
+    }
+
+    fromJSON(jsonString) {
+        try {
+            const data = JSON.parse(jsonString);
+            this.vertices = new Map(data.vertices.map(([id, v]) => {
+                const vertex = new Vertex(v.id, v.x, v.y);
+                vertex.label = v.label;
+                return [id, vertex];
+            }));
+            this.edges = data.edges.map(e => new Edge(e.u, e.v, e.weight, e.directed));
+            this.nextId = data.nextId || 1;
+            return true;
+        } catch (e) {
+            console.error("Failed to load graph data:", e);
+            return false;
+        }
+    }
+
     // Get total degree of a vertex
     getDegree(id) {
         if (!this.vertices.has(id)) return -1;
@@ -484,6 +509,16 @@ class Graph {
                     }
                 }
 
+                return { feasible: true, error: null };
+            
+            case 'hamilton':
+            case 'hamiltonian':
+                if (this.vertices.size > 20) {
+                    return { feasible: false, error: "Graph is too large for Hamiltonian backtracking (> 20 vertices). Complexity is NP-Complete." };
+                }
+                if (this.vertices.size === 0) {
+                    return { feasible: false, error: "Graph is empty." };
+                }
                 return { feasible: true, error: null };
 
             default:

@@ -42,6 +42,9 @@
                     <button class="tool-btn" data-mode="delete" title="Delete Element">
                         <i data-lucide="eraser"></i> Delete
                     </button>
+                    <button id="btn-undo" class="tool-btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);" title="Undo">
+                        <i data-lucide="undo-2"></i> Undo
+                    </button>
                 </div>
                 <button id="btn-clear-graph" class="btn btn-danger mt-1">Clear Graph</button>
             </div>
@@ -83,6 +86,15 @@
                 <button id="btn-clear-results" class="btn btn-secondary mt-1 w-full">
                     <i data-lucide="trash-2"></i> Clear Results
                 </button>
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                    <button id="btn-save-project" class="btn btn-secondary flex-1" style="font-size: 13px;">
+                        <i data-lucide="save"></i> Save Project
+                    </button>
+                    <button id="btn-load-project" class="btn btn-secondary flex-1" style="font-size: 13px;">
+                        <i data-lucide="upload"></i> Load Project
+                    </button>
+                </div>
+                <input type="file" id="load-file-input" style="display: none;" accept=".json" />
             </div>
             
             <div class="instructions text-sm">
@@ -142,6 +154,7 @@
 
     <!-- Scripts (Loaded sequentially for file:// protocol execution) -->
     <script src="js/Graph.js"></script>
+    <script src="js/HistoryManager.js"></script>
     <script src="js/Algorithms.js"></script>
     <script src="js/CanvasManager.js"></script>
     <script src="js/UIManager.js"></script>

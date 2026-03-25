@@ -11,13 +11,17 @@ class UIManager {
         this.dragNodeId = null;
         this.edgeStartNodeId = null;
         this.pendingEdge = null;
+        this.wasDragging = false;
 
         // New Dropdowns
         this.startVertexSelect = document.getElementById('start-vertex');
         this.endVertexSelect = document.getElementById('end-vertex');
+        this.historyManager = new HistoryManager();
+        this.undoBtn = document.getElementById('btn-undo');
 
         this.setupEventListeners();
         this.updateVertexSelects();
+        this.saveState(); // Initial state
     }
 
     setupEventListeners() {
@@ -36,6 +40,7 @@ class UIManager {
         document.getElementById('image-upload').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                this.saveState();
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     this.canvasManager.setBackgroundImage(event.target.result);
@@ -45,11 +50,13 @@ class UIManager {
         });
 
         document.getElementById('btn-clear-bg').addEventListener('click', () => {
+            this.saveState();
             this.canvasManager.clearBackgroundImage();
             document.getElementById('image-upload').value = "";
         });
 
         document.getElementById('btn-clear-graph').addEventListener('click', () => {
+             this.saveState();
              this.graph.clear();
              this.canvasManager.clearHighlights();
              this.canvasManager.draw();
@@ -66,6 +73,26 @@ class UIManager {
         document.getElementById('btn-clear-results').addEventListener('click', () => {
             this.clearResults();
         });
+
+        // Save/Load Project
+        document.getElementById('btn-save-project').addEventListener('click', () => {
+            this.saveToFile();
+        });
+
+        document.getElementById('btn-load-project').addEventListener('click', () => {
+            document.getElementById('load-file-input').click();
+        });
+
+        document.getElementById('load-file-input').addEventListener('change', (e) => {
+            this.loadFromFile(e.target.files[0]);
+        });
+
+        // Undo
+        if (this.undoBtn) {
+            this.undoBtn.addEventListener('click', () => {
+                this.undo();
+            });
+        }
 
         // Canvas Events
         const canvas = this.canvasManager.canvas;
@@ -111,6 +138,7 @@ class UIManager {
 
         if (this.mode === 'add-vertex') {
             if (!clickedNodeId) {
+                this.saveState();
                 this.graph.addVertex(coords.x, coords.y);
                 this.canvasManager.draw();
                 this.updateVertexSelects();
@@ -126,6 +154,7 @@ class UIManager {
             this.canvasManager.draw();
         } else if (this.mode === 'delete') {
             if (clickedNodeId) {
+                this.saveState();
                 this.graph.removeVertex(clickedNodeId);
                 this.canvasManager.draw();
                 this.updateVertexSelects();
@@ -159,6 +188,10 @@ class UIManager {
         }
 
         if (this.isDragging && this.dragNodeId !== null && this.mode === 'select') {
+            if (!this.wasDragging) {
+                this.saveState();
+                this.wasDragging = true;
+            }
             const node = this.graph.getVertex(this.dragNodeId);
             node.x = coords.x;
             node.y = coords.y;
@@ -169,6 +202,7 @@ class UIManager {
     onMouseUp(e) {
         this.isDragging = false;
         this.dragNodeId = null;
+        this.wasDragging = false;
     }
 
     onDoubleClick(e) {
@@ -193,6 +227,7 @@ class UIManager {
         const weight = parseFloat(document.getElementById('edge-weight-input').value) || 1;
         const directed = document.getElementById('edge-directed-input').checked;
         
+        this.saveState();
         this.graph.addEdge(this.pendingEdge.u, this.pendingEdge.v, weight, directed);
         
         document.getElementById('weight-modal').classList.add('hidden');
@@ -219,6 +254,7 @@ class UIManager {
         
         const newLabel = document.getElementById('vertex-label-input').value.trim();
         if (newLabel) {
+            this.saveState();
             this.graph.renameVertex(this.pendingVertexRenameId, newLabel);
             this.updateVertexSelects();
             this.canvasManager.draw();
@@ -481,6 +517,11 @@ class UIManager {
                 break;
             }
             case 'hamilton': {
+                const feas = this.graph.checkFeasibility('hamilton', start, null);
+                if (!feas.feasible) {
+                    this.showResult("Hamiltonian", feas.error, "error");
+                    break;
+                }
                 this.showResult("Hamiltonian", "Warning: NP-Complete algorithm. Computing...", "info");
                 // Yield thread to show message
                 setTimeout(() => {
@@ -492,10 +533,12 @@ class UIManager {
                                 numberVertices: false,
                                 numberEdges: true,
                                 onStep: ({ step, total, node, prev }) => {
+                                    const label = this.graph.getVertex(node).label;
                                     if (prev === null) {
-                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${label}</div>`);
                                     } else {
-                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                        const prevLabel = this.graph.getVertex(prev).label;
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prevLabel} &rarr; ${label}</div>`);
                                     }
                                 }
                             });
@@ -503,7 +546,7 @@ class UIManager {
                             this.canvasManager.setPathHighlight(res.circuit);
                             this.canvasManager.setEdgeOrderFromPath(res.circuit);
                         }
-                        this.showResult("Hamiltonian Circuit", `Found Circuit:<br/>${res.circuit.join(' &rarr; ')}`);
+                        this.showResult("Hamiltonian Circuit", `Found Circuit:<br/>${res.circuitLabels.join(' &rarr; ')}`);
                     } else if (res.path) {
                         if (doAnimate) {
                             const logEl = this.createStepLogger("Hamilton Steps");
@@ -511,10 +554,12 @@ class UIManager {
                                 numberVertices: false,
                                 numberEdges: true,
                                 onStep: ({ step, total, node, prev }) => {
+                                    const label = this.graph.getVertex(node).label;
                                     if (prev === null) {
-                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${node}</div>`);
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Start at ${label}</div>`);
                                     } else {
-                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prev} &rarr; ${node}</div>`);
+                                        const prevLabel = this.graph.getVertex(prev).label;
+                                        logEl.insertAdjacentHTML('beforeend', `<div><strong>Step ${step}/${total}:</strong> Move ${prevLabel} &rarr; ${label}</div>`);
                                     }
                                 }
                             });
@@ -522,7 +567,7 @@ class UIManager {
                             this.canvasManager.setPathHighlight(res.path);
                             this.canvasManager.setEdgeOrderFromPath(res.path);
                         }
-                        this.showResult("Hamiltonian Path", `Found Path based on backtracking:<br/>${res.path.join(' &rarr; ')}`);
+                        this.showResult("Hamiltonian Path", `Found Path based on backtracking:<br/>${res.pathLabels.join(' &rarr; ')}`);
                     } else {
                         this.showResult("Hamiltonian Result", "No Hamiltonian Path or Circuit exists.", "error");
                     }
@@ -530,5 +575,88 @@ class UIManager {
                 break;
             }
         }
+    }
+
+    // State Persistence Methods
+    saveState() {
+        this.historyManager.saveState({
+            graphData: this.graph.toJSON(),
+            bgImage: this.canvasManager.bgImage ? this.canvasManager.bgImage.src : null
+        });
+    }
+
+    undo() {
+        const prevState = this.historyManager.undo();
+        if (prevState) {
+            this.graph.fromJSON(prevState.graphData);
+            if (prevState.bgImage) {
+                this.canvasManager.setBackgroundImage(prevState.bgImage);
+            } else {
+                this.canvasManager.clearBackgroundImage();
+            }
+            this.canvasManager.clearHighlights();
+            this.canvasManager.draw();
+            this.updateVertexSelects();
+        } else {
+            this.showResult("Undo", "No more actions to undo.", "info");
+        }
+    }
+
+    saveToFile() {
+        const data = {
+            graph: JSON.parse(this.graph.toJSON()),
+            bgImage: this.canvasManager.bgImage ? this.canvasManager.bgImage.src : null,
+            version: "1.0"
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `graph_project_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    loadFromFile(file) {
+        if (!file) return;
+        console.log("Loading file:", file.name);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                console.log("Parsed project data:", data);
+                
+                if (data.graph) {
+                    this.saveState(); // Save current before loading
+                    const success = this.graph.fromJSON(JSON.stringify(data.graph));
+                    if (!success) {
+                        this.showResult("Load Error", "Graph data structure is invalid.", "error");
+                        return;
+                    }
+
+                    if (data.bgImage) {
+                        console.log("Loading background image...");
+                        this.canvasManager.setBackgroundImage(data.bgImage);
+                    } else {
+                        this.canvasManager.clearBackgroundImage();
+                    }
+                    
+                    this.canvasManager.clearHighlights();
+                    this.canvasManager.draw();
+                    this.updateVertexSelects();
+                    this.showResult("Load", `Project loaded successfully.<br/>- Vertices: ${this.graph.vertices.size}<br/>- Edges: ${this.graph.edges.length}`);
+                } else {
+                    this.showResult("Load Error", "File is not a valid graph project (missing graph component).", "error");
+                }
+            } catch (err) {
+                console.error("Load file error:", err);
+                this.showResult("Load Error", "Failed to parse JSON file. Ensure it is a valid project file.", "error");
+            }
+        };
+        reader.onerror = (err) => {
+            console.error("FileReader error:", err);
+            this.showResult("Load Error", "Failed to read the file.", "error");
+        };
+        reader.readAsText(file);
     }
 }
