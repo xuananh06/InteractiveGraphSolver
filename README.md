@@ -49,8 +49,7 @@ Vì đây là project tĩnh (HTML/CSS/JS), bạn chỉ cần:
 - **Select**: chọn tool Select để kéo-thả đỉnh, hoặc chọn 1 đỉnh làm “start” (một số thuật toán dùng đỉnh đang chọn).
 - **Undo**: quay lại.
 - **Chọn đỉnh bắt đầu/kết thúc**:
-  - Click vào đỉnh để chọn.
-  - Đỉnh đang chọn sẽ được dùng làm **Start Vertex**.
+  - Click vào **Start Vertex** để chọn đỉnh bắt đầu.
   - Với Dijkstra, có thể chọn thêm **End Vertex** để tìm đường đi ngắn nhất.
 - **Run Algorithm**:
   - Chọn thuật toán ở dropdown, nhấn **Run Algorithm**
