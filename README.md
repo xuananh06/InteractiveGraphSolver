@@ -9,6 +9,14 @@
   - Thêm/xóa **đỉnh**
   - Thêm/xóa **cạnh** (hỗ trợ **trọng số** và **cạnh có hướng**)
   - Kéo-thả để di chuyển đỉnh
+- **Graph Control**:
+  - Chọn **Start Vertex** cho các thuật toán duyệt (DFS, BFS)
+  - Chọn **End Vertex** cho các bài toán đường đi (Dijkstra)
+  - Highlight đỉnh đang chọn trên canvas  
+- **Quản lý thao tác & dữ liệu**:
+  - **Undo** thao tác (quay lại)
+  - **Save / Load graph** (lưu và tải lại đồ thị)
+  - **Upload image** làm background
 - **Trực quan hóa kết quả trên Canvas**:
   - **Đổi màu** các cạnh thuộc **Shortest Path** / **MST**
   - **Đánh số thứ tự** đỉnh/cạnh theo thứ tự duyệt / thứ tự cạnh trong đường đi/chu trình
@@ -26,7 +34,7 @@
   - Kiểm tra điều kiện bậc + liên thông
   - Dựng đường đi/chu trình bằng **Hierholzer** (đồ thị **vô hướng**)
 - **Euler (có hướng)**:
-  - Hỗ trợ nếu đồ thị **chỉ gồm cạnh có hướng** (không mix vô hướng và có hướng)
+  - Hỗ trợ nếu đồ thị **chỉ gồm cạnh có hướng** 
   - Điều kiện theo **in-degree/out-degree** và kiểm tra tính liên thông theo chiều
 - **Hamilton Path / Circuit**:
   - Tìm kiếm thực tế bằng **backtracking** (NP-Complete)
@@ -39,11 +47,17 @@ Vì đây là project tĩnh (HTML/CSS/JS), bạn chỉ cần:
 - **Vertex**: chọn tool Vertex và click lên canvas để thêm đỉnh.
 - **Edge**: chọn tool Edge, click 2 đỉnh liên tiếp để tạo cạnh → nhập **weight** và chọn **directed** nếu cần.
 - **Select**: chọn tool Select để kéo-thả đỉnh, hoặc chọn 1 đỉnh làm “start” (một số thuật toán dùng đỉnh đang chọn).
+- **Undo**: quay lại.
+- **Chọn đỉnh bắt đầu/kết thúc**:
+  - Click vào đỉnh để chọn.
+  - Đỉnh đang chọn sẽ được dùng làm **Start Vertex**.
+  - Với Dijkstra, có thể chọn thêm **End Vertex** để tìm đường đi ngắn nhất.
 - **Run Algorithm**:
   - Chọn thuật toán ở dropdown, nhấn **Run Algorithm**
   - Tick **Animate (step-by-step)** để xem chạy từng bước + log Step 1/2/3…
 - **Clear Results**: xóa panel kết quả.
 - **Clear Graph**: xóa toàn bộ đồ thị.
+- **Save/Load Project**: lưu và tải đồ thị.
 
 ## Ghi chú & giới hạn
 - **Dijkstra** yêu cầu **trọng số không âm** (nếu có trọng số âm, kết quả không đảm bảo đúng).
