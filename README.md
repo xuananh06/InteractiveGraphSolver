@@ -1,5 +1,7 @@
 # Graph Solver — Interactive Graph Algorithm Visualizer
 
+**Link Demo:** https://xuananh06.github.io/InteractiveGraphSolver/
+
 Ứng dụng web chạy trực tiếp trên trình duyệt để **vẽ đồ thị trên Canvas** và **trực quan hóa** các thuật toán cơ bản (tô màu đường đi/cạnh, đánh số thứ tự bước duyệt, hỗ trợ chạy từng bước).
 
 ## Tính năng chính
@@ -44,6 +46,5 @@ Vì đây là project tĩnh (HTML/CSS/JS), bạn chỉ cần:
 - **Clear Graph**: xóa toàn bộ đồ thị.
 
 ## Ghi chú & giới hạn
-- **Euler (dựng đường đi/chu trình)** hiện hỗ trợ **đồ thị vô hướng**.
 - **Dijkstra** yêu cầu **trọng số không âm** (nếu có trọng số âm, kết quả không đảm bảo đúng).
 - **Hamilton** có thể chậm với đồ thị lớn vì dùng backtracking.
